@@ -3,14 +3,20 @@ from rest_framework import viewsets, permissions
 from rest_framework.response import Response
 from boards.serializers import BoardSerializer, BoardListSerializer, BoardCardSerializer, BoardMemberSerializer, CardCommentSerializer
 from django.shortcuts import get_object_or_404, HttpResponse
+from rest_framework.authentication import TokenAuthentication
+from rest_framework.permissions import IsAuthenticated
 
 
 class BoardViewSet(viewsets.ViewSet):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = (IsAuthenticated,)   
+
     serializer = BoardSerializer
 
     def board_list(self, request, **kwargs):
         board_list = Board.objects.filter(archive='False')
         serializer = self.serializer(board_list, many=True)
+        import pdb; pdb.set_trace()
         return Response(serializer.data, status=200)
 
 
