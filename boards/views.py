@@ -1,8 +1,8 @@
-from .models import Board, Boardlist, Card, BoardMember, CardComment
+from .models import User, Board, Boardlist, Card, BoardMember, CardComment
 from rest_framework import viewsets, permissions
 from rest_framework.response import Response
 from boards.serializers import BoardSerializer, BoardListSerializer, BoardCardSerializer, BoardMemberSerializer, CardCommentSerializer
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, HttpResponse
 
 
 class BoardViewSet(viewsets.ViewSet):
@@ -13,17 +13,20 @@ class BoardViewSet(viewsets.ViewSet):
         serializer = self.serializer(board_list, many=True)
         return Response(serializer.data, status=200)
 
+
     def board_create(self, request, **kwargs):
         serializer = self.serializer(data=request.data)
         if serializer.is_valid():
-            board=serializer.save(owner=request.user)
-            return Response(board, status=201)
+            serializer.save(owner=request.user)
+            return Response(serializer.data, status=201)
         return Response(serializer.errors, status=400)
+
 
     def board_detail(self, request, **kwargs):
         board = get_object_or_404(Board, id=kwargs.get('id'))
         serializer = self.serializer(board)
         return Response(serializer.data, status=200)
+
 
     def board_delete(self, request, **kwargs):
         board = get_object_or_404(Board, id=kwargs.get('id'))
@@ -31,6 +34,7 @@ class BoardViewSet(viewsets.ViewSet):
         board.save()
         serializer = self.serializer(board)
         return Response(serializer.data, status=200)
+
 
 class BoardListViewSet(viewsets.ViewSet):
     serializer = BoardListSerializer
@@ -43,12 +47,12 @@ class BoardListViewSet(viewsets.ViewSet):
 
         
     def boardlist_create(self, request, **kwargs):
-        board_id = get_object_or_404(Board, id=kwargs.get('board_id'))
+        board = get_object_or_404(Board, id=kwargs.get('board_id'))
         serializer = self.serializer(data=request.data)
         if serializer.is_valid():
-            data = serializer.save()
-            data.board = board_id
-        return Response(serializer.data, status=200)
+            serializer.save(board=board)
+            return Response(serializer.data, status=201)
+        return Response(serializer.errors, status=400)
 
 
     def boardlist_detail(self, request, **kwargs):
@@ -76,17 +80,30 @@ class BoardCardViewSet(viewsets.ViewSet):
         serializer = self.serializer(cards, many=True)
         return Response(serializer.data, status=200)
 
+
     def card_create(self, request, **kwargs):
         boardlist = Boardlist.objects.get(id = kwargs.get('list_id'))
         serializer = self.serializer(data=request.data)
         if serializer.is_valid():
-            data = serializer.save(boardlist=boardlist)
-            return Response(data, status=200)
+            serializer.save(boardlist=boardlist)
+            return Response(serializer.data, status=200)
+        return Response(serializer.errors, status=400)
+
+
+    def card_detail(self, request, **kwargs):
+        card = get_object_or_404(Card, id=kwargs.get('card_id'))
+        serializer = self.serializer(card)
         return Response(serializer.data, status=200)
 
 
+    def card_delete(self, request, **kwargs):
+        card = get_object_or_404(Card, id=kwargs.get('card_id'))
+        card.delete()
+        return HttpResponse("Deleted")
+
+
 class BoardMemberViewSet(viewsets.ViewSet):
-    """ Boardmember list and action
+    """ Boardmember View and action
     """
     serializer = BoardMemberSerializer
 
@@ -98,16 +115,27 @@ class BoardMemberViewSet(viewsets.ViewSet):
 
 
 class CardCommentViewSet(viewsets.ViewSet):
+    """Card Comment View
+    """
     serializer = CardCommentSerializer
 
-    def cardcomment_list(self, request, **kwargs):
+    def comment_list(self, request, **kwargs):
         card = get_object_or_404(Card, id=kwargs.get('card_id'))
         comment = CardComment.objects.filter(card=card)
         serializer = self.serializer(comment, many=True)
         return Response(serializer.data, status=200)
+
+
+    def comment_create(self, request, **kwargs):
+        card = Card.objects.get(id = kwargs.get('card_id'))
+        serializer = self.serializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(card=card, user=request.user)
+            return Response(serializer.data, status=200)
+        return Response(serializer.errors, status=400)
   
-    def cardcomment_delete(self, request, **kwargs):
+
+    def comment_delete(self, request, **kwargs):
         comment = get_object_or_404(CardComment, id=kwargs.get('comment_id'))
         comment.delete()
-        import pdb; pdb.set_trace()
         return Response("Deleted")
